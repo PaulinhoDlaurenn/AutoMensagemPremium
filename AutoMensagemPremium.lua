@@ -26,11 +26,25 @@ end
 
 function replaceCurrentScript(newFile)
     local currentFile = thisScript().path
-    if os.rename(newFile, currentFile) then
-        showUpdateMessage("Script substituído com sucesso! Reiniciando...")
-        restartScript()
+    -- No Windows/MoonLoader, os.rename pode falhar se o arquivo estiver aberto.
+    -- Vamos usar um método mais robusto: copiar o conteúdo e deletar o temporário.
+    local f_new = io.open(newFile, "rb")
+    if f_new then
+        local content = f_new:read("*a")
+        f_new:close()
+        
+        local f_curr = io.open(currentFile, "wb")
+        if f_curr then
+            f_curr:write(content)
+            f_curr:close()
+            os.remove(newFile)
+            showUpdateMessage("Atualização aplicada com sucesso! Reiniciando...")
+            restartScript()
+        else
+            showUpdateMessage("Erro ao abrir o script atual para escrita.")
+        end
     else
-        showUpdateMessage("Erro ao substituir o arquivo. Tente manualmente.")
+        showUpdateMessage("Erro ao ler o novo arquivo baixado.")
     end
 end
 
@@ -600,7 +614,6 @@ local function drawSidebar()
         { "Sistemas Msg", "layout-grid", 1 },
         { "ESP (Wallhack)", "eye", 6 },
         { "Configurações", "settings", 2 },
-        { "Log", "list", 3 },
         { "Sobre", "info-circle", 4 }
     }
 
@@ -973,12 +986,7 @@ function imgui.OnDrawFrame()
             end
         end
         imgui.EndChild()
-    elseif activeTab.v == 3 then
-        imgui.BeginChild("##log_tab", imgui.ImVec2(0, 0), true)
-        imgui.Text("Log de Atividades")
-        imgui.Separator()
-        imgui.TextDisabled("Recurso em desenvolvimento...")
-        imgui.EndChild()
+
     else
         imgui.BeginChild("##about_tab", imgui.ImVec2(0, 0), true)
         imgui.Text("Sobre o Mod")
