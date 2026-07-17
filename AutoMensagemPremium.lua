@@ -12,7 +12,7 @@ local weapons = require 'game.weapons'
 -- ============================================================
 -- AUTO UPDATE SYSTEM
 -- ============================================================
-local SCRIPT_VERSION = "1.0.5"
+local SCRIPT_VERSION = "1.0.4"
 local UPDATE_API = "https://raw.githubusercontent.com/PaulinhoDlaurenn/AutoMensagemPremium/main/version.json"
 local UPDATE_FILE_PATH = getWorkingDirectory() .. "\\AutoMensagemPremium_new.lua"
 
