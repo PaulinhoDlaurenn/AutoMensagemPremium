@@ -8,17 +8,13 @@ local vkeys  = require "vkeys"
 local ffi = require "ffi"
 local memory = require 'memory'
 local weapons = require 'game.weapons'
-
--- ============================================================
--- AUTO UPDATE SYSTEM
--- ============================================================
 local SCRIPT_VERSION = "1.0.5"
 local UPDATE_API = "https://raw.githubusercontent.com/PaulinhoDlaurenn/AutoMensagemPremium/main/version.json"
 local UPDATE_FILE_PATH = getWorkingDirectory() .. "\\AutoMensagemPremium_new.lua"
 
 function showUpdateMessage(text)
     sampAddChatMessage("{3486F2}[AutoUpdate] {FFFFFF}" .. text, -1)
-    print("[AutoUpdate] " .. text) -- Log no moonloader.log
+    print("[AutoUpdate] " .. text) 
 end
 
 function restartScript()
@@ -29,7 +25,6 @@ end
 function replaceCurrentScript(newFile)
     local currentFile = thisScript().path
     
-    -- Abre o novo arquivo baixado
     local f_new = io.open(newFile, "rb")
     if not f_new then
         showUpdateMessage("Erro: Não foi possível ler o arquivo baixado.")
@@ -39,18 +34,16 @@ function replaceCurrentScript(newFile)
     local content = f_new:read("*a")
     f_new:close()
     
-    if content == nil or #content < 100 then -- Verificação básica de integridade
+    if content == nil or #content < 100 then 
         showUpdateMessage("Erro: O arquivo baixado parece estar vazio ou corrompido.")
         return
     end
 
-    -- Tenta abrir o arquivo atual para escrita (sobrescrever)
     local f_curr = io.open(currentFile, "wb")
     if f_curr then
         f_curr:write(content)
         f_curr:close()
         
-        -- Remove o arquivo temporário
         pcall(os.remove, newFile)
         
         showUpdateMessage("Arquivo substituído com sucesso!")
@@ -63,7 +56,7 @@ end
 function downloadUpdate(url)
     showUpdateMessage("Download iniciado...")
     downloadUrlToFile(url, UPDATE_FILE_PATH, function(id, status, p1, p2)
-        if status == 6 then -- Download finalizado
+        if status == 6 then 
             showUpdateMessage("Download concluído!")
             replaceCurrentScript(UPDATE_FILE_PATH)
         elseif status == -1 then
@@ -87,33 +80,26 @@ function checkForUpdates()
                     local ok, json = pcall(decodeJson, content)
                     if ok and json and json.version then
                         if json.version ~= SCRIPT_VERSION then
-                            showUpdateMessage("Nova versão encontrada: " .. json.version)
-                            showUpdateMessage(json.message or "Iniciando processo de atualização...")
+                            showUpdateMessage("Nova versao encontrada: " .. json.version)
+                            showUpdateMessage(json.message or "Iniciando processo de atualizacao...")
                             downloadUpdate(json.download)
                         else
-                            print("[AutoUpdate] O script já está na versão mais recente (" .. SCRIPT_VERSION .. ").")
+                            print("[AutoUpdate] O script ja esta na versao mais recente (" .. SCRIPT_VERSION .. ").")
                         end
                     else
-                        showUpdateMessage("Erro: Resposta da API de atualização inválida.")
+                        showUpdateMessage("Erro: Resposta da API de atualizao invalida.")
                     end
                 else
-                    showUpdateMessage("Erro: Falha ao ler dados da atualização.")
+                    showUpdateMessage("Erro: Falha ao ler dados da atualizacao.")
                 end
             elseif status == -1 then
-                showUpdateMessage("Erro: Não foi possível verificar atualizações.")
+                showUpdateMessage("Erro: Não foi possivel verificar atualizações.")
             end
         end)
     end)
 end
 
--- ============================================================
--- ESP / PED STATUS CONSTANTS & FFI
--- ============================================================
 local getBonePosition = ffi.cast("int (__thiscall*)(void*, float*, int, bool)", 0x5E4280)
-
--- ============================================================
--- TABLER ICONS - FIX V6
--- ============================================================
 local ti_ok, ti = pcall(require, "tabler_icons")
 if not ti_ok then
   ti_ok, ti = pcall(require, "tabler_icons(1)")
@@ -196,9 +182,6 @@ local function IC(name)
   return ""
 end
 
--- ============================================================
--- ASSETS LOADING
--- ============================================================
 local logo_texture = nil
 local staff_icon_texture = nil
 
@@ -214,9 +197,6 @@ local function loadAssets()
     end
 end
 
--- ============================================================
--- CONFIG / DATA
--- ============================================================
 local CFG_NAME = "AutoMensagemPremium"
 local defaultCfg = {
     config = {
@@ -235,7 +215,7 @@ local defaultCfg = {
         distance = 35.0,
         pedPing = false,
         espActive = false,
-        pedSkeleton = true -- NOVO
+        pedSkeleton = true 
     },
     systems = {
         [1] = { channel = "/ac", interval = 60, status = true, messages = { "Boa noite! Este é o nosso servidor." } },
@@ -294,14 +274,9 @@ local function loadConfig()
     end
 end
 
--- ============================================================
--- UI STATE
--- ============================================================
 local menuOpen = imgui.ImBool(false)
 local activeTab = imgui.ImInt(5)
 local selectedSystemIdx = 1
-
--- Perfil Staff State
 local staffProfile = {
     isStaff = false,
     nick = "",
@@ -309,7 +284,7 @@ local staffProfile = {
     msgBoasVindas = ""
 }
 
--- Buffers persistentes
+
 local editChannel = imgui.ImBuffer(64)
 local editInterval = imgui.ImInt(60)
 local editStatus = imgui.ImBool(false)
@@ -317,8 +292,6 @@ local newMessageBuffer = imgui.ImBuffer(128)
 local ui_notify = imgui.ImBool(true)
 local ui_auto_saciar = imgui.ImBool(false)
 local ui_auto_saciar_tempo = imgui.ImInt(300)
-
--- ESP State Buffers
 local espActive = imgui.ImBool(false)
 local espLvl = imgui.ImBool(true)
 local espHpArm = imgui.ImBool(true)
@@ -328,7 +301,7 @@ local espCustomNicks = imgui.ImBool(false)
 local espDefault = imgui.ImBool(true)
 local espDistance = imgui.ImFloat(35.0)
 local espPing = imgui.ImBool(false)
-local espSkeleton = imgui.ImBool(true) -- NOVO
+local espSkeleton = imgui.ImBool(true) 
 
 local function updateEditBuffers()
     local sys = systems[selectedSystemIdx]
@@ -340,8 +313,6 @@ local function updateEditBuffers()
     ui_notify.v = cfg.config.notify
     ui_auto_saciar.v = cfg.config.auto_saciar or false
     ui_auto_saciar_tempo.v = cfg.config.auto_saciar_tempo or 300
-    
-    -- ESP Buffers
     espActive.v = cfg.ped.espActive
     espLvl.v = cfg.ped.pedLvl
     espHpArm.v = cfg.ped.pedHpArm
@@ -354,9 +325,6 @@ local function updateEditBuffers()
     espSkeleton.v = cfg.ped.pedSkeleton or false
 end
 
--- ============================================================
--- STYLE
--- ============================================================
 local function setTheme(cor)
   local style  = imgui.GetStyle()
   local colors = style.Colors
@@ -384,9 +352,9 @@ local function setTheme(cor)
   colors[clr.TextDisabled]     = ImVec4(0.45, 0.45, 0.50, 1.00)
   
   local themes = {
-    [1] = {0.10, 0.40, 0.90}, -- Blue
-    [2] = {0.80, 0.15, 0.20}, -- Red
-    [3] = {0.15, 0.70, 0.30}, -- Green
+    [1] = {0.10, 0.40, 0.90}, 
+    [2] = {0.80, 0.15, 0.20}, 
+    [3] = {0.15, 0.70, 0.30}, 
   }
   local c = themes[cor] or themes[1]
   colors[clr.TitleBgActive]    = ImVec4(c[1]*0.6, c[2]*0.6, c[3]*0.6, 1.00)
@@ -397,9 +365,6 @@ local function setTheme(cor)
   colors[clr.CheckMark]        = ImVec4(c[1], c[2], c[3], 1.00)
 end
 
--- ============================================================
--- CUSTOM COMPONENTS
--- ============================================================
 local function ToggleSwitch(label, bool_ref)
     local p = imgui.GetCursorScreenPos()
     local draw_list = imgui.GetWindowDrawList()
@@ -433,9 +398,6 @@ local function StatCard(title, value, icon, color)
     imgui.EndChild()
 end
 
--- ============================================================
--- LOGIC
--- ============================================================
 local function msg(text)
     if cfg.config.notify then
         sampAddChatMessage("{3486F2}[AutoMensagem] {FFFFFF}" .. tostring(text), -1)
@@ -456,9 +418,6 @@ local function getTotalMessages()
     return count
 end
 
--- ============================================================
--- ESP LOGIC
--- ============================================================
 function getBodyPartCoordinates(id, handle)
   local pedptr = getCharPointer(handle)
   local vec = ffi.new("float[3]")
@@ -466,7 +425,7 @@ function getBodyPartCoordinates(id, handle)
   return vec[0], vec[1], vec[2]
 end
 
--- Fonte melhorada para o ESP
+
 local fontESP = renderCreateFont("Segoe UI", 9, 12)
 
 function drawBar(x, y, width, height, val, max, color, background)
@@ -474,11 +433,10 @@ function drawBar(x, y, width, height, val, max, color, background)
     if fill > width then fill = width end
     if fill < 0 then fill = 0 end
     
-    -- Borda e Fundo
-    renderDrawBox(x - 1, y - 1, width + 2, height + 2, 0xFF000000) -- Borda preta
-    renderDrawBox(x, y, width, height, background) -- Fundo cinza
+  
+    renderDrawBox(x - 1, y - 1, width + 2, height + 2, 0xFF000000) 
+    renderDrawBox(x, y, width, height, background)
     
-    -- Preenchimento
     if fill > 0 then
         renderDrawBox(x, y, fill, height, color)
     end
@@ -486,15 +444,11 @@ end
 
 function drawSkeleton(handle)
     local bones = {
-        -- Tronco e Cabeça
+   
         {1, 2}, {2, 3}, {3, 4}, {4, 5}, {5, 8},
-        -- Braço Esquerdo
         {3, 22}, {22, 23}, {23, 24}, {24, 25},
-        -- Braço Direito
         {3, 32}, {32, 33}, {33, 34}, {34, 35},
-        -- Perna Esquerda
         {1, 51}, {51, 52}, {52, 53}, {53, 54},
-        -- Perna Direita
         {1, 41}, {41, 42}, {42, 43}, {43, 44}
     }
     
@@ -505,7 +459,7 @@ function drawSkeleton(handle)
         if isPointOnScreen(b1X, b1Y, b1Z, 0.0) and isPointOnScreen(b2X, b2Y, b2Z, 0.0) then
             local s1X, s1Y = convert3DCoordsToScreen(b1X, b1Y, b1Z)
             local s2X, s2Y = convert3DCoordsToScreen(b2X, b2Y, b2Z)
-            renderDrawLine(s1X, s1Y, s2X, s2Y, 1, 0xFFFFFFFF) -- Branco, linha fina
+            renderDrawLine(s1X, s1Y, s2X, s2Y, 1, 0xFFFFFFFF) 
         end
     end
 end
@@ -521,15 +475,13 @@ function runESP()
                 local pedX, pedY, pedZ = getCharCoordinates(handle)
                 local floordistance = math.floor(getDistanceBetweenCoords3d(myX, myY, myZ, pedX, pedY, pedZ))
                 
-                -- Limite de renderização
+               
                 if floordistance <= cfg.ped.distance then
-                    -- Desenhar Esqueleto
+                  
                     if cfg.ped.pedSkeleton then
                         drawSkeleton(handle)
                     end
 
-                    -- Deslocamento dinâmico conforme a distância (Eleva gradualmente conforme longe)
-                    -- Base: 1.45. A cada 10 metros, sobe 0.05.
                     local dynamicOffset = 1.45 + (floordistance / 150)
                     local X, Y, Z = getOffsetFromCharInWorldCoords(handle, 0.0, 0.0, dynamicOffset)
                     local result = isPointOnScreen(X, Y, Z, 0.0)
@@ -541,7 +493,6 @@ function runESP()
                         local arm = sampGetPlayerArmor(id)
                         local name = sampGetPlayerNickname(id)
                         
-                        -- Aplicar patch de Nick Personalizado
                         if cfg.ped.pedCustomNicks then 
                             memory.setint16(sampGetBase() + 0x70D40, 0xC390, true) 
                         else 
@@ -552,7 +503,6 @@ function runESP()
                         local barWidth = 40
                         local barHeight = 4
                         
-                        -- 1. Nick + [AFK] + ID
                         if cfg.ped.pedCustomNicks then
                             local afkPart = ""
                             if cfg.ped.pedAfk and sampIsPlayerPaused(id) then
@@ -562,13 +512,11 @@ function runESP()
                             local nickText = afkPart .. "{"..color.."}"..name.." {DCDDE1}["..id.."]"
                             local textWidth = renderGetFontDrawTextLength(fontESP, nickText:gsub("{%x%x%x%x%x%x}", ""))
                             
-                            -- Desenha o Nick um pouco mais para cima para criar espaço (currentY - 4)
                             renderFontDrawText(fontESP, nickText:gsub("{%x%x%x%x%x%x}", ""), screenX - (textWidth / 2) + 1, currentY - 4 + 1, 0xFF000000)
                             renderFontDrawText(fontESP, nickText, screenX - (textWidth / 2), currentY - 4, 0xFFFFFFFF)
                             currentY = currentY + 14
                         end
                         
-                        -- 2. Barras
                         if cfg.ped.pedHpArm then
                             drawBar(screenX - (barWidth / 2), currentY, barWidth, barHeight, hp, 100, 0xFFFF0000, 0xFF333333)
                             currentY = currentY + barHeight + 2
@@ -578,7 +526,6 @@ function runESP()
                             end
                         end
                         
-                        -- 3. Level
                         if cfg.ped.pedLvl then
                             local lvlText = "{D1EEEE}"..sampGetPlayerScore(id).." LVL"
                             local textWidth = renderGetFontDrawTextLength(fontESP, lvlText:gsub("{%x%x%x%x%x%x}", ""))
@@ -586,7 +533,6 @@ function runESP()
                             currentY = currentY + 12
                         end
                         
-                        -- 4. Ping
                         if cfg.ped.pedPing then
                             local pingText = "{FFFFFF}"..sampGetPlayerPing(id).." Ping"
                             local textWidth = renderGetFontDrawTextLength(fontESP, pingText:gsub("{%x%x%x%x%x%x}", ""))
@@ -594,7 +540,6 @@ function runESP()
                             currentY = currentY + 12
                         end
                         
-                        -- 5. Arma
                         if cfg.ped.pedGun then
                             local gunName = weapons.get_name(getCurrentCharWeapon(handle))
                             local gunText = "{A9A9A9}"..gunName
@@ -608,9 +553,6 @@ function runESP()
     end
 end
 
--- ============================================================
--- UI COMPONENTS
--- ============================================================
 local function drawSidebar()
     imgui.BeginChild("##sidebar", imgui.ImVec2(180, 0), true)
     
@@ -624,7 +566,7 @@ local function drawSidebar()
         imgui.SetWindowFontScale(1.0)
         imgui.PopStyleColor()
     end
-    imgui.TextDisabled("   Mod Menu v2.0")
+    imgui.TextDisabled("Horizonte Roleplay")
     imgui.Spacing()
     imgui.Separator()
     imgui.Spacing()
@@ -862,14 +804,14 @@ local function drawSystemList()
         imgui.TextDisabled(" Canal: " .. sys.channel)
         imgui.TextDisabled(" Tempo: " .. sys.interval .. "s | Mensagens: " .. #sys.messages)
         imgui.SetCursorPos(imgui.ImVec2(180, 50))
-        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.7, 0.2, 0.6)) -- Amarelo Suave
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.7, 0.2, 0.6)) 
         if imgui.Button(IC("edit") .. "##edit_" .. i, imgui.ImVec2(35, 35)) then
             selectedSystemIdx = i
             updateEditBuffers()
         end
         imgui.PopStyleColor()
         imgui.SameLine()
-        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) -- Vermelho Suave
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) 
         if imgui.Button(IC("trash") .. "##del_" .. i, imgui.ImVec2(35, 35)) then
             table.remove(systems, i)
             if selectedSystemIdx > #systems then selectedSystemIdx = math.max(1, #systems) end
@@ -911,14 +853,14 @@ local function drawEditor()
     for i, m in ipairs(sys.messages) do
         imgui.Text(i .. "  " .. m)
         imgui.SameLine(imgui.GetWindowWidth() - 85)
-        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.7, 0.2, 0.6)) -- Amarelo Suave
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.7, 0.2, 0.6)) 
         if imgui.Button(IC("edit") .. "##edit_msg_" .. i, imgui.ImVec2(30, 30)) then
             newMessageBuffer.v = m
             table.remove(sys.messages, i)
         end
         imgui.PopStyleColor()
         imgui.SameLine()
-        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) -- Vermelho Suave
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) 
         if imgui.Button(IC("trash") .. "##del_msg_" .. i, imgui.ImVec2(30, 30)) then
             table.remove(sys.messages, i)
             saveConfig()
@@ -937,7 +879,7 @@ local function drawEditor()
         end
     end
     imgui.SetCursorPosY(imgui.GetWindowHeight() - 60)
-    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) -- Vermelho Suave
+    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) 
     if imgui.Button(IC("trash") .. " Excluir Sistema", imgui.ImVec2(160, 40)) then
         table.remove(systems, selectedSystemIdx)
         selectedSystemIdx = 1
@@ -946,7 +888,7 @@ local function drawEditor()
     end
     imgui.PopStyleColor()
     imgui.SameLine(imgui.GetWindowWidth() - 190)
-    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.7, 0.2, 0.6)) -- Verde Suave
+    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.7, 0.2, 0.6)) 
     if imgui.Button(IC("save") .. " Salvar Alterações", imgui.ImVec2(180, 40)) then
         sys.channel = editChannel.v
         sys.interval = math.max(1, editInterval.v)
@@ -958,9 +900,6 @@ local function drawEditor()
     imgui.EndChild()
 end
 
--- ============================================================
--- DRAW FRAME
--- ============================================================
 function imgui.OnDrawFrame()
     if not menuOpen.v then return end
 
@@ -1021,24 +960,33 @@ function imgui.OnDrawFrame()
         imgui.EndChild()
 
     else
-        imgui.BeginChild("##about_tab", imgui.ImVec2(0, 0), true)
-        imgui.Text("Sobre o Mod")
-        imgui.Separator()
-        imgui.Text("Auto Mensagem Premium v2.0")
-        imgui.Text("Baseado no design Grafico do Horizonte.")
-        imgui.Spacing()
-        imgui.Text("Recursos:")
-        imgui.Text("- Sistemas ilimitados de Auto Mensagem")
-        imgui.Text("- ESP (Wallhack) Integrado")
-        imgui.Text("- Salvamento automático das configurações")
-        imgui.EndChild()
+    imgui.BeginChild("##about_tab", imgui.ImVec2(0, 0), true)
+
+imgui.Text("Painel Hz")
+imgui.Separator()
+
+imgui.Text("Versao: v2.0")
+imgui.Text("Desenvolvedor: PaulinhoDlaurenn")
+imgui.Text("Base Grafica: Horizonte RP")
+imgui.Spacing()
+
+imgui.Text("Recursos")
+imgui.BulletText("Sistemas ilimitados de Auto Mensagem")
+imgui.BulletText("ESP Premium Integrado")
+imgui.BulletText("ESP Esqueleto (Skeleton)")
+imgui.BulletText("Atualizacao automatica")
+imgui.BulletText("Configuracoes salvas automaticamente")
+imgui.BulletText("Interface moderna e otimizada")
+
+imgui.Spacing()
+imgui.Separator()
+imgui.Text("Obrigado por utilizar o Painel Hz!")
+
+imgui.EndChild()
     end
     imgui.End()
 end
 
--- ============================================================
--- MAIN
--- ============================================================
 local lastSaciarTime = 0
 local ev = require "lib.samp.events"
 
@@ -1058,8 +1006,7 @@ end
 
 function main()
     while not isSampAvailable() do wait(0) end
-    
-    -- Inicia verificação de atualizações
+
     pcall(checkForUpdates)
     
     loadConfig()
@@ -1067,21 +1014,20 @@ function main()
     updateEditBuffers()
     loadAssets()
 
-    sampRegisterChatCommand("menuhz", function()
+    sampRegisterChatCommand("painelhz", function()
         menuOpen.v = not menuOpen.v
         imgui.Process = menuOpen.v
     end)
 
-    msg("Mod carregado! Use /menuhz para abrir o menu.")
+    msg("Mod carregado! Use /painelhz para abrir o menu.")
 
     while true do
         wait(0)
         local now = os.clock()
-        
-        -- Executa o ESP
+
         runESP()
 
-        -- Lógica de Auto Mensagens (rodar a cada 100ms para performance)
+    
         if now % 0.1 < 0.01 then
             for _, sys in pairs(systems) do
                 if sys.status and #sys.messages > 0 then
@@ -1096,7 +1042,6 @@ function main()
             end
         end
 
-        -- Lógica de Auto Saciar
         if cfg.config.auto_saciar and sampIsLocalPlayerSpawned() then
             if now - lastSaciarTime >= (cfg.config.auto_saciar_tempo or 300) then
                 sampSendChat("/saciarme")
