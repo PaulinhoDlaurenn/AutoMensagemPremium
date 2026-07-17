@@ -1,5 +1,5 @@
 script_name("AutoMensagemPremium")
-script_author("PaulinhoDlaurenn & Manus")
+script_author("PaulinhoDlaurenn")
 script_description("Painel de Auto Mensagem")
 
 local inicfg = require "inicfg"
@@ -12,55 +12,68 @@ local weapons = require 'game.weapons'
 -- ============================================================
 -- AUTO UPDATE SYSTEM
 -- ============================================================
-local SCRIPT_VERSION = "1.0.4"
+local SCRIPT_VERSION = "1.0.5"
 local UPDATE_API = "https://raw.githubusercontent.com/PaulinhoDlaurenn/AutoMensagemPremium/main/version.json"
 local UPDATE_FILE_PATH = getWorkingDirectory() .. "\\AutoMensagemPremium_new.lua"
 
 function showUpdateMessage(text)
     sampAddChatMessage("{3486F2}[AutoUpdate] {FFFFFF}" .. text, -1)
+    print("[AutoUpdate] " .. text) -- Log no moonloader.log
 end
 
 function restartScript()
+    showUpdateMessage("Reiniciando script...")
     thisScript():reload()
 end
 
 function replaceCurrentScript(newFile)
     local currentFile = thisScript().path
-    -- No Windows/MoonLoader, os.rename pode falhar se o arquivo estiver aberto.
-    -- Vamos usar um método mais robusto: copiar o conteúdo e deletar o temporário.
+    
+    -- Abre o novo arquivo baixado
     local f_new = io.open(newFile, "rb")
-    if f_new then
-        local content = f_new:read("*a")
-        f_new:close()
+    if not f_new then
+        showUpdateMessage("Erro: Não foi possível ler o arquivo baixado.")
+        return
+    end
+    
+    local content = f_new:read("*a")
+    f_new:close()
+    
+    if content == nil or #content < 100 then -- Verificação básica de integridade
+        showUpdateMessage("Erro: O arquivo baixado parece estar vazio ou corrompido.")
+        return
+    end
+
+    -- Tenta abrir o arquivo atual para escrita (sobrescrever)
+    local f_curr = io.open(currentFile, "wb")
+    if f_curr then
+        f_curr:write(content)
+        f_curr:close()
         
-        local f_curr = io.open(currentFile, "wb")
-        if f_curr then
-            f_curr:write(content)
-            f_curr:close()
-            os.remove(newFile)
-            showUpdateMessage("Atualização aplicada com sucesso! Reiniciando...")
-            restartScript()
-        else
-            showUpdateMessage("Erro ao abrir o script atual para escrita.")
-        end
+        -- Remove o arquivo temporário
+        pcall(os.remove, newFile)
+        
+        showUpdateMessage("Arquivo substituído com sucesso!")
+        restartScript()
     else
-        showUpdateMessage("Erro ao ler o novo arquivo baixado.")
+        showUpdateMessage("Erro: Falha ao abrir o script atual para escrita. Verifique permissões.")
     end
 end
 
 function downloadUpdate(url)
-    showUpdateMessage("Baixando nova versão...")
+    showUpdateMessage("Download iniciado...")
     downloadUrlToFile(url, UPDATE_FILE_PATH, function(id, status, p1, p2)
         if status == 6 then -- Download finalizado
             showUpdateMessage("Download concluído!")
             replaceCurrentScript(UPDATE_FILE_PATH)
         elseif status == -1 then
-            showUpdateMessage("Erro ao baixar a atualização.")
+            showUpdateMessage("Erro: Falha no download da atualização.")
         end
     end)
 end
 
 function checkForUpdates()
+    showUpdateMessage("Verificando atualização...")
     lua_thread.create(function()
         local tempFile = getWorkingDirectory() .. "\\version_check.json"
         downloadUrlToFile(UPDATE_API, tempFile, function(id, status, p1, p2)
@@ -69,17 +82,25 @@ function checkForUpdates()
                 if f then
                     local content = f:read("*a")
                     f:close()
-                    os.remove(tempFile)
+                    pcall(os.remove, tempFile)
                     
                     local ok, json = pcall(decodeJson, content)
                     if ok and json and json.version then
                         if json.version ~= SCRIPT_VERSION then
-                            showUpdateMessage(json.message or "Nova atualização disponível!")
-                            showUpdateMessage("Versão: " .. json.version)
+                            showUpdateMessage("Nova versão encontrada: " .. json.version)
+                            showUpdateMessage(json.message or "Iniciando processo de atualização...")
                             downloadUpdate(json.download)
+                        else
+                            print("[AutoUpdate] O script já está na versão mais recente (" .. SCRIPT_VERSION .. ").")
                         end
+                    else
+                        showUpdateMessage("Erro: Resposta da API de atualização inválida.")
                     end
+                else
+                    showUpdateMessage("Erro: Falha ao ler dados da atualização.")
                 end
+            elseif status == -1 then
+                showUpdateMessage("Erro: Não foi possível verificar atualizações.")
             end
         end)
     end)
@@ -841,17 +862,21 @@ local function drawSystemList()
         imgui.TextDisabled(" Canal: " .. sys.channel)
         imgui.TextDisabled(" Tempo: " .. sys.interval .. "s | Mensagens: " .. #sys.messages)
         imgui.SetCursorPos(imgui.ImVec2(180, 50))
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.7, 0.2, 0.6)) -- Amarelo Suave
         if imgui.Button(IC("edit") .. "##edit_" .. i, imgui.ImVec2(35, 35)) then
             selectedSystemIdx = i
             updateEditBuffers()
         end
+        imgui.PopStyleColor()
         imgui.SameLine()
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) -- Vermelho Suave
         if imgui.Button(IC("trash") .. "##del_" .. i, imgui.ImVec2(35, 35)) then
             table.remove(systems, i)
             if selectedSystemIdx > #systems then selectedSystemIdx = math.max(1, #systems) end
             updateEditBuffers()
             saveConfig()
         end
+        imgui.PopStyleColor()
         imgui.EndChild()
         if isSelected then imgui.PopStyleColor() end
         imgui.Spacing()
@@ -886,15 +911,19 @@ local function drawEditor()
     for i, m in ipairs(sys.messages) do
         imgui.Text(i .. "  " .. m)
         imgui.SameLine(imgui.GetWindowWidth() - 85)
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.7, 0.2, 0.6)) -- Amarelo Suave
         if imgui.Button(IC("edit") .. "##edit_msg_" .. i, imgui.ImVec2(30, 30)) then
             newMessageBuffer.v = m
             table.remove(sys.messages, i)
         end
+        imgui.PopStyleColor()
         imgui.SameLine()
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) -- Vermelho Suave
         if imgui.Button(IC("trash") .. "##del_msg_" .. i, imgui.ImVec2(30, 30)) then
             table.remove(sys.messages, i)
             saveConfig()
         end
+        imgui.PopStyleColor()
         imgui.Separator()
     end
     imgui.EndChild()
@@ -908,13 +937,16 @@ local function drawEditor()
         end
     end
     imgui.SetCursorPosY(imgui.GetWindowHeight() - 60)
+    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.2, 0.2, 0.6)) -- Vermelho Suave
     if imgui.Button(IC("trash") .. " Excluir Sistema", imgui.ImVec2(160, 40)) then
         table.remove(systems, selectedSystemIdx)
         selectedSystemIdx = 1
         updateEditBuffers()
         saveConfig()
     end
+    imgui.PopStyleColor()
     imgui.SameLine(imgui.GetWindowWidth() - 190)
+    imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.2, 0.7, 0.2, 0.6)) -- Verde Suave
     if imgui.Button(IC("save") .. " Salvar Alterações", imgui.ImVec2(180, 40)) then
         sys.channel = editChannel.v
         sys.interval = math.max(1, editInterval.v)
@@ -922,6 +954,7 @@ local function drawEditor()
         saveConfig()
         msg("Alterações salvas!")
     end
+    imgui.PopStyleColor()
     imgui.EndChild()
 end
 
