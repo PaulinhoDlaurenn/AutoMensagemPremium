@@ -1,6 +1,6 @@
 script_name("AutoMensagemPremium")
 script_author("PaulinhoDlaurenn & Manus")
-script_description("Painel de Auto Mensagem Premium com suporte a múltiplos sistemas e ESP integrado")
+script_description("Painel de Auto Mensagem")
 
 local inicfg = require "inicfg"
 local imgui  = require "imgui"
