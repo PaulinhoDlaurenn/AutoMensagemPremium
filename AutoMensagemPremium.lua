@@ -1,6 +1,6 @@
 script_name("AutoMensagemPremium")
 script_author("PaulinhoDlaurenn")
-script_description("Painel de Auto Mensagem")
+script_description("Painel Staff Horizonte Rp")
 
 local inicfg = require "inicfg"
 local imgui  = require "imgui"
@@ -8,7 +8,7 @@ local vkeys  = require "vkeys"
 local ffi = require "ffi"
 local memory = require 'memory'
 local weapons = require 'game.weapons'
-local SCRIPT_VERSION = "1.0.5"
+local SCRIPT_VERSION = "1.0.6"
 local UPDATE_API = "https://raw.githubusercontent.com/PaulinhoDlaurenn/AutoMensagemPremium/main/version.json"
 local UPDATE_FILE_PATH = getWorkingDirectory() .. "\\AutoMensagemPremium_new.lua"
 
@@ -196,14 +196,129 @@ local function loadAssets()
         staff_icon_texture = imgui.CreateTextureFromFile(staff_path)
     end
 end
+local keyNames = {
+    [0x08] = "BACKSPACE",
+    [0x09] = "TAB",
+    [0x0C] = "CLEAR",
+    [0x0D] = "ENTER",
+    [0x10] = "SHIFT",
+    [0x11] = "CTRL",
+    [0x12] = "ALT",
+    [0x13] = "PAUSE",
+    [0x14] = "CAPS",
+    [0x1B] = "ESC",
+    [0x20] = "SPACE",
+    [0x21] = "PAGE UP",
+    [0x22] = "PAGE DOWN",
+    [0x23] = "END",
+    [0x24] = "HOME",
+    [0x25] = "LEFT",
+    [0x26] = "UP",
+    [0x27] = "RIGHT",
+    [0x28] = "DOWN",
+    [0x29] = "SELECT",
+    [0x2A] = "PRINT",
+    [0x2B] = "EXECUTE",
+    [0x2C] = "SNAP",
+    [0x2D] = "INSERT",
+    [0x2E] = "DELETE",
+    [0x2F] = "HELP",
+    [0x30] = "0",
+    [0x31] = "1",
+    [0x32] = "2",
+    [0x33] = "3",
+    [0x34] = "4",
+    [0x35] = "5",
+    [0x36] = "6",
+    [0x37] = "7",
+    [0x38] = "8",
+    [0x39] = "9",
+    [0x41] = "A",
+    [0x42] = "B",
+    [0x43] = "C",
+    [0x44] = "D",
+    [0x45] = "E",
+    [0x46] = "F",
+    [0x47] = "G",
+    [0x48] = "H",
+    [0x49] = "I",
+    [0x4A] = "J",
+    [0x4B] = "K",
+    [0x4C] = "L",
+    [0x4D] = "M",
+    [0x4E] = "N",
+    [0x4F] = "O",
+    [0x50] = "P",
+    [0x51] = "Q",
+    [0x52] = "R",
+    [0x53] = "S",
+    [0x54] = "T",
+    [0x55] = "U",
+    [0x56] = "V",
+    [0x57] = "W",
+    [0x58] = "X",
+    [0x59] = "Y",
+    [0x5A] = "Z",
+    [0x5B] = "LWIN",
+    [0x5C] = "RWIN",
+    [0x5D] = "APPS",
+    [0x60] = "NUMPAD 0",
+    [0x61] = "NUMPAD 1",
+    [0x62] = "NUMPAD 2",
+    [0x63] = "NUMPAD 3",
+    [0x64] = "NUMPAD 4",
+    [0x65] = "NUMPAD 5",
+    [0x66] = "NUMPAD 6",
+    [0x67] = "NUMPAD 7",
+    [0x68] = "NUMPAD 8",
+    [0x69] = "NUMPAD 9",
+    [0x6A] = "NUMPAD *",
+    [0x6B] = "NUMPAD +",
+    [0x6C] = "NUMPAD .",
+    [0x6D] = "NUMPAD -",
+    [0x6E] = "NUMPAD /",
+    [0x70] = "F1",
+    [0x71] = "F2",
+    [0x72] = "F3",
+    [0x73] = "F4",
+    [0x74] = "F5",
+    [0x75] = "F6",
+    [0x76] = "F7",
+    [0x77] = "F8",
+    [0x78] = "F9",
+    [0x79] = "F10",
+    [0x7A] = "F11",
+    [0x7B] = "F12",
+    [0x90] = "NUM LOCK",
+    [0x91] = "SCROLL",
+}
 
+local blockedKeys = {
+    [0x0D] = true, 
+    [0x10] = true, 
+    [0x11] = true, 
+    [0x12] = true, 
+    [0x14] = true, 
+    [0x1B] = true, 
+    [0x20] = true, 
+    [0x5B] = true, 
+    [0x5C] = true, 
+}
+
+local function getKeyDisplayName(vkCode)
+    if keyNames[vkCode] then
+        return keyNames[vkCode]
+    end
+    return "KEY " .. vkCode
+end
 local CFG_NAME = "AutoMensagemPremium"
 local defaultCfg = {
     config = {
         tema_cor = 1,
         notify = true,
         auto_saciar = false,
-        auto_saciar_tempo = 300
+        auto_saciar_tempo = 300,
+        toggle_key = 0x76, 
     },
     ped = {
         pedLvl = true,
@@ -226,6 +341,12 @@ local defaultCfg = {
 local systems = {}
 local cfg = { config = defaultCfg.config, ped = defaultCfg.ped }
 
+local capturingKey = false       
+local keyCaptureCooldown = false 
+local keyCaptureCooldownTime = 0 
+local captureMessage = ""        
+local captureMessageTime = 0     
+local lastToggleKeyState = false 
 local function saveConfig()
     local folder = getWorkingDirectory() .. "\\config"
     if not doesDirectoryExist(folder) then createDirectory(folder) end
@@ -253,6 +374,9 @@ local function loadConfig()
         local ok, res = pcall(function() return loadfile(path)() end)
         if ok and type(res) == "table" then
             cfg.config = res.config or defaultCfg.config
+            if not cfg.config.toggle_key then
+                cfg.config.toggle_key = 0x76 
+            end
             systems = res.systems or defaultCfg.systems
             cfg.ped = res.ped or defaultCfg.ped
             for _, s in pairs(systems) do
@@ -280,6 +404,7 @@ local selectedSystemIdx = 1
 local staffProfile = {
     isStaff = false,
     nick = "",
+    rg = "",
     cargo = "",
     msgBoasVindas = ""
 }
@@ -353,8 +478,7 @@ local function setTheme(cor)
   
   local themes = {
     [1] = {0.10, 0.40, 0.90}, 
-    [2] = {0.80, 0.15, 0.20}, 
-    [3] = {0.15, 0.70, 0.30}, 
+    [2] = {0.50, 0.00, 0.80}, 
   }
   local c = themes[cor] or themes[1]
   colors[clr.TitleBgActive]    = ImVec4(c[1]*0.6, c[2]*0.6, c[3]*0.6, 1.00)
@@ -432,9 +556,7 @@ function drawBar(x, y, width, height, val, max, color, background)
     local fill = (val / max) * width
     if fill > width then fill = width end
     if fill < 0 then fill = 0 end
-    
-  
-    renderDrawBox(x - 1, y - 1, width + 2, height + 2, 0xFF000000) 
+    renderDrawBox(x - 1, y - 1, width + 2, height + 2, background)
     renderDrawBox(x, y, width, height, background)
     
     if fill > 0 then
@@ -697,7 +819,7 @@ local function drawStaffProfile()
             imgui.TextColored(imgui.ImVec4(0.2, 0.6, 1.0, 1.0), IC("user-shield"))
             imgui.SetWindowFontScale(1.0)
         end
-        
+
         local textStartX = 150
         imgui.SetCursorPos(imgui.ImVec2(textStartX, 40))
         imgui.TextDisabled(IC("user") .. " ADMINISTRADOR:")
@@ -705,14 +827,17 @@ local function drawStaffProfile()
         imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.2, 0.6, 1.0, 1.0))
         imgui.Text(staffProfile.nick:upper())
         imgui.PopStyleColor()
+
+        imgui.SetCursorPos(imgui.ImVec2(textStartX, 80))
+        imgui.TextDisabled(IC("id") .. " RG DO STAFF:")
+        imgui.SetCursorPos(imgui.ImVec2(textStartX, 100))
+        imgui.Text(staffProfile.rg ~= "" and staffProfile.rg or "N/A")
         
-        imgui.SetCursorPos(imgui.ImVec2(textStartX, 90))
+        imgui.SetCursorPos(imgui.ImVec2(textStartX, 130))
         imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.8, 0.6, 0.1, 0.3))
         imgui.Button(IC("award") .. " " .. staffProfile.cargo:upper(), imgui.ImVec2(0, 32))
         imgui.PopStyleColor()
-        
-        imgui.SetCursorPos(imgui.ImVec2(textStartX, 135))
-        imgui.TextColored(imgui.ImVec4(0.2, 0.8, 0.4, 1.0), IC("circle-check") .. " SESSÃO ADMINISTRATIVA ATIVA")
+    
         
         imgui.EndChild()
         imgui.PopStyleColor()
@@ -776,6 +901,11 @@ local function drawDashboard()
     imgui.TextColored(esp_color, esp_status)
 
     imgui.EndChild()
+
+    imgui.Columns(1)
+    imgui.SetCursorPosY(imgui.GetWindowHeight() - 40)
+    imgui.TextDisabled(" Servidor: " .. (sampGetCurrentServerName() or "Desconhecido"))
+
     imgui.EndChild()
 end
 
@@ -900,6 +1030,90 @@ local function drawEditor()
     imgui.EndChild()
 end
 
+local function drawConfigTab()
+    imgui.BeginChild("##config_tab", imgui.ImVec2(0, 0), true)
+    imgui.Text("Configurações Gerais")
+    imgui.Separator()
+    imgui.Spacing()
+    imgui.TextColored(imgui.ImVec4(0.2, 0.5, 1.0, 1.0), IC("settings") .. " Atalho do Menu")
+    imgui.Separator()
+    imgui.Spacing()
+
+    local currentKeyName = getKeyDisplayName(cfg.config.toggle_key or 0x76)
+
+    local keyBtnLabel = capturingKey
+        and IC("keyboard") .. "  Pressione qualquer tecla..."
+        or IC("keyboard") .. "  Tecla atual: " .. currentKeyName
+
+    imgui.PushStyleColor(imgui.Col.Button,        imgui.ImVec4(0, 0, 0, 0))
+    imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImVec4(1, 1, 1, 0.05))
+    imgui.PushStyleColor(imgui.Col.ButtonActive,  imgui.ImVec4(1, 1, 1, 0.10))
+
+    if imgui.Button(keyBtnLabel, imgui.ImVec2(0, 35)) then
+        if capturingKey then
+            capturingKey = false
+        else
+            capturingKey = true
+            captureMessage = ""
+            captureMessageTime = 0
+        end
+    end
+
+    imgui.PopStyleColor(3)
+    
+    imgui.Spacing()
+    
+    if capturingKey then
+        local alpha = (math.sin(os.clock() * 6) + 1) * 0.35 + 0.15
+        imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(1.0, 0.7, 0.2, alpha))
+        imgui.Text("  Aguardando tecla... Pressione qualquer tecla para definir o novo atalho.")
+        imgui.PopStyleColor()
+        imgui.Spacing()
+        
+        imgui.TextDisabled("  Dica: Pressione ESC para cancelar.")
+    end
+    
+  
+    if captureMessage ~= "" and os.clock() - captureMessageTime < 5 then
+        local elapsed = os.clock() - captureMessageTime
+        local fadeAlpha = elapsed < 3 and 1.0 or math.max(0, 1.0 - (elapsed - 3) / 2)
+        imgui.PushStyleColor(imgui.Col.Text, imgui.ImVec4(0.2, 0.9, 0.3, fadeAlpha))
+        imgui.Text("  " .. captureMessage)
+        imgui.PopStyleColor()
+    end
+    
+    imgui.Spacing()
+    imgui.Separator()
+    imgui.Spacing()
+    if ToggleSwitch("Notificações no Chat", ui_notify) then
+        cfg.config.notify = ui_notify.v
+        saveConfig()
+    end
+    imgui.Spacing()
+    if ToggleSwitch("Auto Saciar (/saciarme)", ui_auto_saciar) then
+        cfg.config.auto_saciar = ui_auto_saciar.v
+        saveConfig()
+    end
+    if cfg.config.auto_saciar then
+        imgui.PushItemWidth(200)
+        if imgui.InputInt("Tempo (seg)", ui_auto_saciar_tempo) then
+            cfg.config.auto_saciar_tempo = ui_auto_saciar_tempo.v
+            saveConfig()
+        end
+        imgui.PopItemWidth()
+    end
+    imgui.Spacing()
+    local themes = {"Azul (Padrão)", "Roxo"}
+    for i, name in ipairs(themes) do
+        if imgui.RadioButton(name, cfg.config.tema_cor == i) then
+            cfg.config.tema_cor = i
+            setTheme(i)
+            saveConfig()
+        end
+    end
+    imgui.EndChild()
+end
+
 function imgui.OnDrawFrame()
     if not menuOpen.v then return end
 
@@ -928,61 +1142,31 @@ function imgui.OnDrawFrame()
     elseif activeTab.v == 6 then
         drawESPMenu()
     elseif activeTab.v == 2 then
-        imgui.BeginChild("##config_tab", imgui.ImVec2(0, 0), true)
-        imgui.Text("Configurações Gerais")
-        imgui.Separator()
-        if ToggleSwitch("Notificações no Chat", ui_notify) then
-            cfg.config.notify = ui_notify.v
-            saveConfig()
-        end
-        imgui.Spacing()
-        if ToggleSwitch("Auto Saciar (/saciarme)", ui_auto_saciar) then
-            cfg.config.auto_saciar = ui_auto_saciar.v
-            saveConfig()
-        end
-        if cfg.config.auto_saciar then
-            imgui.PushItemWidth(200)
-            if imgui.InputInt("Tempo (seg)", ui_auto_saciar_tempo) then
-                cfg.config.auto_saciar_tempo = ui_auto_saciar_tempo.v
-                saveConfig()
-            end
-            imgui.PopItemWidth()
-        end
-        imgui.Spacing()
-        local themes = {"Azul (Padrão)", "Vermelho", "Verde"}
-        for i, name in ipairs(themes) do
-            if imgui.RadioButton(name, cfg.config.tema_cor == i) then
-                cfg.config.tema_cor = i
-                setTheme(i)
-                saveConfig()
-            end
-        end
-        imgui.EndChild()
-
+        drawConfigTab()
     else
-    imgui.BeginChild("##about_tab", imgui.ImVec2(0, 0), true)
+        imgui.BeginChild("##about_tab", imgui.ImVec2(0, 0), true)
 
-imgui.Text("Painel Hz")
-imgui.Separator()
+    imgui.Text("Painel Hz")
+    imgui.Separator()
 
-imgui.Text("Versao: v2.0")
-imgui.Text("Desenvolvedor: PaulinhoDlaurenn")
-imgui.Text("Base Grafica: Horizonte RP")
-imgui.Spacing()
+    imgui.Text("Versao: v2.0")
+    imgui.Text("Desenvolvedor: PaulinhoDlaurenn")
+    imgui.Text("Base Grafica: Horizonte RP")
+    imgui.Spacing()
 
-imgui.Text("Recursos")
-imgui.BulletText("Sistemas ilimitados de Auto Mensagem")
-imgui.BulletText("ESP Premium Integrado")
-imgui.BulletText("ESP Esqueleto (Skeleton)")
-imgui.BulletText("Atualizacao automatica")
-imgui.BulletText("Configuracoes salvas automaticamente")
-imgui.BulletText("Interface moderna e otimizada")
+    imgui.Text("Recursos")
+    imgui.BulletText("Sistemas ilimitados de Auto Mensagem")
+    imgui.BulletText("ESP Premium Integrado")
+    imgui.BulletText("ESP Esqueleto (Skeleton)")
+    imgui.BulletText("Atualizacao automatica")
+    imgui.BulletText("Configuracoes salvas automaticamente")
+    imgui.BulletText("Interface moderna e otimizada")
 
-imgui.Spacing()
-imgui.Separator()
-imgui.Text("Obrigado por utilizar o Painel Hz!")
+    imgui.Spacing()
+    imgui.Separator()
+    imgui.Text("Obrigado por utilizar o Painel Hz!")
 
-imgui.EndChild()
+    imgui.EndChild()
     end
     imgui.End()
 end
@@ -998,8 +1182,63 @@ function ev.onServerMessage(color, text)
             staffProfile.isStaff = true
             staffProfile.nick = nick:gsub(",", "")
             staffProfile.cargo = cargo
-            staffProfile.msgBoasVindas = string.format("Saudações, %s!\n\nComo %s, você é fundamental.", staffProfile.nick, cargo)
+            staffProfile.msgBoasVindas = string.format(
+    "Bem-vindo(a), %s!\n\nÉ um prazer tê-lo(a) em nossa equipe. Como %s, sua dedicação, profissionalismo e colaboração são essenciais para o sucesso de nossas operações. Desejamos uma excelente experiência e muito sucesso em sua jornada.",
+    staffProfile.nick,
+    cargo
+)
             sampAddChatMessage("{3486F2}[Staff] {FFFFFF}Perfil administrativo atualizado!", -1)
+        end
+    end
+
+    if cleanText:find("INFO: Seja bem%-vindo%(a%)") and cleanText:find("Ultimo login:") then
+        local nick, rg = cleanText:match("INFO: Seja bem%-vindo%(a%) (.-)%[(%d+)%]")
+        if nick and rg then
+            staffProfile.nick = nick:gsub("%s+$", "")
+            staffProfile.rg = rg
+            sampAddChatMessage("{3486F2}[Staff] {FFFFFF}RG coletado: {0080FF}" .. rg, -1)
+        end
+    end
+end
+
+local function processKeyToggle()
+    local currentKeyState = isKeyDown(cfg.config.toggle_key or 0x76)
+    
+    if currentKeyState and not lastToggleKeyState then
+        if not capturingKey and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsCursorActive() then
+            menuOpen.v = not menuOpen.v
+            imgui.Process = menuOpen.v
+        end
+    end
+    
+    lastToggleKeyState = currentKeyState
+    if keyCaptureCooldown and os.clock() - keyCaptureCooldownTime > 0.5 then
+        keyCaptureCooldown = false
+    end
+end
+
+local function processKeyCapture()
+    if not capturingKey then return end
+    if keyCaptureCooldown then return end
+    if isKeyDown(0x1B) then
+        capturingKey = false
+        keyCaptureCooldown = true
+        keyCaptureCooldownTime = os.clock()
+        msg("Captura de tecla cancelada.")
+        return
+    end
+    for vk = 0, 255 do
+        if isKeyDown(vk) and not blockedKeys[vk] then
+            cfg.config.toggle_key = vk
+            saveConfig()
+            captureMessage = "Tecla alterada para: " .. getKeyDisplayName(vk)
+            captureMessageTime = os.clock()
+            capturingKey = false
+            keyCaptureCooldown = true
+            keyCaptureCooldownTime = os.clock()
+            
+            msg("Atalho do menu alterado para: " .. getKeyDisplayName(vk))
+            break
         end
     end
 end
@@ -1019,24 +1258,36 @@ function main()
         imgui.Process = menuOpen.v
     end)
 
-    msg("Mod carregado! Use /painelhz para abrir o menu.")
+    msg("Mod carregado! Use /painelhz ou pressione " .. getKeyDisplayName(cfg.config.toggle_key or 0x76) .. " para abrir o menu.")
 
     while true do
         wait(0)
         local now = os.clock()
+        processKeyCapture()
+        processKeyToggle()
 
         runESP()
 
-    
         if now % 0.1 < 0.01 then
             for _, sys in pairs(systems) do
                 if sys.status and #sys.messages > 0 then
+                  
+                    if not sys.msgIndex then sys.msgIndex = 1 end
                     if now - (sys.lastTime or 0) >= sys.interval then
-                        for _, message in ipairs(sys.messages) do
-                            sampSendChat(sys.channel .. " " .. message)
+                        sys.lastTime = now
+                        if sys.msgIndex > #sys.messages then
+                            sys.msgIndex = 1
+                        end
+                        local sent = 0
+                        while sent < 2 and sys.msgIndex <= #sys.messages do
+                            sampSendChat(sys.channel .. " " .. sys.messages[sys.msgIndex])
+                            sys.msgIndex = sys.msgIndex + 1
+                            sent = sent + 1
                             wait(50)
                         end
-                        sys.lastTime = now
+                        if sys.msgIndex > #sys.messages then
+                            sys.msgIndex = 1
+                        end
                     end
                 end
             end
