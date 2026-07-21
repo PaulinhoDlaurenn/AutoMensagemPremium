@@ -8,7 +8,7 @@ local vkeys  = require "vkeys"
 local ffi = require "ffi"
 local memory = require 'memory'
 local weapons = require 'game.weapons'
-local SCRIPT_VERSION = "1.0.6"
+local SCRIPT_VERSION = "1.0.5"
 local UPDATE_API = "https://raw.githubusercontent.com/PaulinhoDlaurenn/AutoMensagemPremium/main/version.json"
 local UPDATE_FILE_PATH = getWorkingDirectory() .. "\\AutoMensagemPremium_new.lua"
 
